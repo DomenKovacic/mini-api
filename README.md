@@ -1,58 +1,198 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Mini Task API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A small Laravel JSON API for managing and processing tasks.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- CRUD API for tasks
+- Filtering and sorting on task listing
+- Business rule validation
+- Task processing flow:
+  - `todo -> in_progress`
+  - `in_progress -> done` or `failed`
+- SQLite database
+- Seed data included
+- Feature tests included
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tech Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP
+- Laravel
+- SQLite
+- Laravel testing tools
 
-## Learning Laravel
+## Task Fields
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Each task contains:
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- `id`
+- `title`
+- `description`
+- `status`
+- `priority`
+- `due_date`
+- `external_reference`
+- `metadata`
+- `created_at`
+- `updated_at`
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## Business Rules
 
-## Agentic Development
+- A task marked as `done` cannot have a due date in the future
+- A task marked as `done` cannot be moved back to `todo`
+- `external_reference` must be unique if provided
+- A `high` priority task must have a due date
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Local Setup
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate --seed
+php artisan serve
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Application will be available at:
 
-## Contributing
+```text
+http://127.0.0.1:8000
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Running Tests
 
-## Code of Conduct
+```bash
+php artisan test
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Seeding Sample Data
 
-## Security Vulnerabilities
+```bash
+php artisan db:seed
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## API Endpoints
 
-## License
+### List tasks
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```http
+GET /api/tasks
+```
+
+Optional query params:
+
+- `status`
+- `priority`
+- `due_before`
+- `sort`
+- `direction`
+
+Example:
+
+```bash
+curl -H "Accept: application/json" "http://127.0.0.1:8000/api/tasks?priority=high&sort=created_at&direction=desc"
+```
+
+### Show one task
+
+```http
+GET /api/tasks/{id}
+```
+
+Example:
+
+```bash
+curl -H "Accept: application/json" http://127.0.0.1:8000/api/tasks/1
+```
+
+### Create task
+
+```http
+POST /api/tasks
+```
+
+Example:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/tasks \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "New task",
+    "priority": "medium"
+  }'
+```
+
+### Update task
+
+```http
+PUT /api/tasks/{id}
+```
+
+Example:
+
+```bash
+curl -X PUT http://127.0.0.1:8000/api/tasks/1 \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Updated task title",
+    "priority": "high",
+    "due_date": "2026-03-30"
+  }'
+```
+
+### Delete task
+
+```http
+DELETE /api/tasks/{id}
+```
+
+Example:
+
+```bash
+curl -X DELETE -H "Accept: application/json" http://127.0.0.1:8000/api/tasks/1
+```
+
+### Process task
+
+```http
+POST /api/tasks/{id}/process
+```
+
+Example:
+
+```bash
+curl -X POST -H "Accept: application/json" http://127.0.0.1:8000/api/tasks/1/process
+```
+
+## Docker
+
+This project includes Docker support with:
+
+- `Dockerfile`
+- `docker-compose.yml`
+
+To run with Docker:
+
+```bash
+docker compose up --build
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000
+```
+
+## Notes
+
+This project was built in stages:
+
+1. Create a working CRUD baseline
+2. Refactor validation into Form Requests
+3. Move task processing logic into an Action class
+4. Add tests, seed data, documentation, and Docker support
+
+Primary development and testing were done locally with PHP + SQLite. Docker configuration is included for easier startup.
