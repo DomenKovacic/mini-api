@@ -2,16 +2,26 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\ProcessTaskAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreTaskRequest;
+use App\Http\Requests\UpdateTaskRequest;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
+
+//separacija:
+//controller = HTTP
+//request = validation
+//action = bussines logic
+
 {
     public function index(Request $request): JsonResponse
-    // lists task: status, priority, due_before, sort, direction - ujemanje z endpoint requiermenti
+
+    //Vrni vse naloge z neobveznimi filtri in razvrščanjem po stanju/prioriteti/datumu.
     {
         $validated = $request->validate([
             'status' => ['nullable', Rule::in(['todo', 'in_progress', 'done', 'failed'])],
@@ -38,25 +48,16 @@ class TaskController extends Controller
         $sort = $validated['sort'] ?? 'created_at';
         $direction = $validated['direction'] ?? 'desc';
 
-        $tasks = $query->orderBy($sort, $direction)->get();
-
-        return response()->json($tasks);
+        return response()->json(
+            $query->orderBy($sort, $direction)->get()
+        );
     }
 
-    public function store(Request $request): JsonResponse
-    // ustvar now task - validacija incoming Jsona, zahteva "title", external_reference mora biti unique, defaulta status v todo, defaulta priority v medium
-    // vrne 201(upajmo)
+    public function store(StoreTaskRequest $request): JsonResponse
+    //Shrani novo nalogo po zahtevi in ​​potrditvi poslovnih pravil.
+    // namesto da se validira v controllerju, Laravel uporabi form request preden se ta funkcija sprozi
     {
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'status' => ['nullable', Rule::in(['todo', 'in_progress', 'done', 'failed'])],
-            'priority' => ['nullable', Rule::in(['low', 'medium', 'high'])],
-            'due_date' => ['nullable', 'date'],
-            'external_reference' => ['nullable', 'string', 'max:100', 'unique:tasks,external_reference'],
-            'metadata' => ['nullable', 'array'],
-        ]);
-
+        $data = $request->validated();
         $data['status'] = $data['status'] ?? 'todo';
         $data['priority'] = $data['priority'] ?? 'medium';
 
@@ -66,43 +67,36 @@ class TaskController extends Controller
     }
 
     public function show(Task $task): JsonResponse
-    // vrne task kot Json
-    // laravel avtomatkso najde task zaradi model bindinga - Task $task
+    //pokazi en task
     {
         return response()->json($task);
     }
 
-    public function update(Request $request, Task $task): JsonResponse
-    // updejta EN task
-    //Rule::unique(...)->ignore($task->id) - obstojeci task drzi svoj external_reference brez da pade v vodo pri uniquness validation-u
+    public function update(UpdateTaskRequest $request, Task $task): JsonResponse
+    //updejtaj task po requestu in bussines rule validation-u
     {
-        $data = $request->validate([
-            'title' => ['sometimes', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'status' => ['sometimes', Rule::in(['todo', 'in_progress', 'done', 'failed'])],
-            'priority' => ['sometimes', Rule::in(['low', 'medium', 'high'])],
-            'due_date' => ['nullable', 'date'],
-            'external_reference' => [
-                'nullable',
-                'string',
-                'max:100',
-                Rule::unique('tasks', 'external_reference')->ignore($task->id),
-            ],
-            'metadata' => ['nullable', 'array'],
-        ]);
+        $task->update($request->validated());
 
-        $task->update($data);
-
-        return response()->json($task);
+        return response()->json($task->fresh());
     }
 
     public function destroy(Task $task): JsonResponse
-    // izbrise EN task in vrne Json message
+    //odstrani task
     {
         $task->delete();
 
         return response()->json([
             'message' => 'Task deleted',
+        ]);
+    }
+
+    public function process(Task $task, ProcessTaskAction $action): JsonResponse
+    {
+        $task = $action->execute($task);
+
+        return response()->json([
+            'message' => 'Task processed',
+            'task' => $task,
         ]);
     }
 }
