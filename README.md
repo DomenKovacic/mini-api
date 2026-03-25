@@ -43,6 +43,18 @@ Each task contains:
 - `external_reference` must be unique if provided
 - A `high` priority task must have a due date
 
+## Architecture
+
+The application is split into clear layers:
+
+- `TaskController` handles HTTP requests and JSON responses
+- `StoreTaskRequest` and `UpdateTaskRequest` handle input validation and business-rule validation
+- `ProcessTaskAction` contains task processing logic
+- `Task` is the Eloquent model for persistence
+- migrations define the database structure
+- seeders provide sample data
+- feature tests cover API behavior and business rules
+
 ## Local Setup
 
 ```bash
